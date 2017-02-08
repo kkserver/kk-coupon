@@ -1,0 +1,7 @@
+package coupon
+
+const ERROR_COUPON = 0x80000
+
+const ERROR_COUPON_NOT_FOUND = ERROR_COUPON + 1
+
+const ERROR_COUPON_COUNT = ERROR_COUPON + 2
