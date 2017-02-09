@@ -6,6 +6,7 @@ import (
 	"github.com/kkserver/kk-lib/kk"
 	"github.com/kkserver/kk-lib/kk/app"
 	"github.com/kkserver/kk-lib/kk/dynamic"
+	"math/rand"
 	"strings"
 	"time"
 )
@@ -441,6 +442,292 @@ func (S *CouponService) HandleCouponQueryTask(a ICouponApp, task *CouponQueryTas
 	}
 
 	task.Result.Coupons = coupons
+
+	return nil
+}
+
+func (S *CouponService) HandleCouponSendTask(a ICouponApp, task *CouponSendTask) error {
+
+	if task.Id == 0 {
+		task.Result.Errno = ERROR_COUPON_NOT_FOUND_ID
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	if task.Uid == 0 {
+		task.Result.Errno = ERROR_COUPON_NOT_FOUND_UID
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	var db, err = a.GetDB()
+
+	if err != nil {
+		task.Result.Errno = ERROR_COUPON
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	v := Coupon{}
+
+	tx, err := db.Begin()
+
+	if err != nil {
+		task.Result.Errno = ERROR_COUPON
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	err = func() error {
+
+		rows, err := kk.DBQuery(tx, a.GetCouponTable(), a.GetPrefix(), " WHERE id=? FOR UPDATE", task.Id)
+
+		if err != nil {
+			task.Result.Errno = ERROR_COUPON
+			task.Result.Errmsg = err.Error()
+			return nil
+		}
+
+		if rows.Next() {
+
+			scanner := kk.NewDBScaner(&v)
+
+			err = scanner.Scan(rows)
+
+			rows.Close()
+
+			if err != nil {
+				return err
+			}
+
+			if v.Status != CouponStatusIn {
+				return app.NewError(ERROR_COUPON_STATUS, "Coupon is not released and can not be distributed")
+			}
+
+			if v.Count >= v.MaxCount {
+				return app.NewError(ERROR_COUPON_COUNT, "Not enough quantity")
+			}
+
+			count, err := kk.DBQueryCount(tx, a.GetCouponReceiveTable(), a.GetPrefix(), " WHERE couponid=? AND uid=?", v.Id, task.Uid)
+
+			if err != nil {
+				return err
+			}
+
+			if count >= v.UMaxCount {
+				return app.NewError(ERROR_COUPON_UCOUNT, "Exceeds the user receiving limit")
+			}
+
+			vv := CouponReceive{}
+
+			vv.CouponId = v.Id
+			vv.Uid = task.Uid
+
+			vv.UseMaxCount = v.UseMaxCount
+			vv.UseMinCount = v.UseMinCount
+			vv.UseMaxValue = v.UseMaxValue
+			vv.UseMinValue = v.UseMinValue
+
+			now := time.Now()
+
+			r := rand.New(now.UnixNano())
+
+			vv.Value = v.MinValue + r.Int63n(v.MaxValue-v.MinValue)
+			vv.Rebate = v.MinRebate + r.Int63n(v.MaxRebate-v.MinRebate)
+			vv.Ctime = now.Unix()
+
+			switch v.StartTimeType {
+			case CouponTimeTypeRelative:
+				vv.StartTime = vv.Ctime + v.StartTime
+			case CouponTimeTypeRelativeDay:
+				vv.StartTime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix() + v.StartTime
+			default:
+				vv.StartTime = v.StartTime
+			}
+
+			switch v.EndTimeType {
+			case CouponTimeTypeRelative:
+				vv.EndTime = vv.Ctime + v.EndTime
+			case CouponTimeTypeRelativeDay:
+				vv.EndTime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix() + v.EndTime
+			default:
+				vv.EndTime = v.EndTime
+			}
+
+			_, err = kk.DBInsert(tx, a.GetCouponReceiveTable(), a.GetPrefix(), &vv)
+
+			if err != nil {
+				return err
+			}
+
+			v.Count = v.Count + 1
+
+			_, err = kk.DBUpdateWithKeys(tx, a.GetCouponTable(), a.GetPrefix(), &v, map[string]bool{"count": true})
+
+			if err != nil {
+				return err
+			}
+
+		} else {
+			rows.Close()
+			return app.NewError(ERROR_COUPON_NOT_FOUND, "Not Found coupon")
+		}
+
+		return nil
+	}()
+
+	if err == nil {
+		err = tx.Commit()
+	}
+
+	if err != nil {
+		tx.Rollback()
+		task.Result.Errno = ERROR_COUPON
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	task.Result.Coupon = &v
+
+	return nil
+}
+
+func (S *CouponService) HandleCouponUseTask(a ICouponApp, task *CouponUseTask) error {
+
+	if task.ReceiveId == 0 {
+		task.Result.Errno = ERROR_COUPON_NOT_FOUND_ID
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	var db, err = a.GetDB()
+
+	if err != nil {
+		task.Result.Errno = ERROR_COUPON
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	v := CouponReceive{}
+
+	tx, err := db.Begin()
+
+	if err != nil {
+		task.Result.Errno = ERROR_COUPON
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	err = func() error {
+
+		rows, err := kk.DBQuery(tx, a.GetCouponTable(), a.GetPrefix(), " WHERE id=? FOR UPDATE", task.Id)
+
+		if err != nil {
+			task.Result.Errno = ERROR_COUPON
+			task.Result.Errmsg = err.Error()
+			return nil
+		}
+
+		if rows.Next() {
+
+			scanner := kk.NewDBScaner(&v)
+
+			err = scanner.Scan(rows)
+
+			rows.Close()
+
+			if err != nil {
+				return err
+			}
+
+			if v.Status != CouponStatusIn {
+				return app.NewError(ERROR_COUPON_STATUS, "Coupon is not released and can not be distributed")
+			}
+
+			if v.Count >= v.MaxCount {
+				return app.NewError(ERROR_COUPON_COUNT, "Not enough quantity")
+			}
+
+			count, err := kk.DBQueryCount(tx, a.GetCouponReceiveTable(), a.GetPrefix(), " WHERE couponid=? AND uid=?", v.Id, task.Uid)
+
+			if err != nil {
+				return err
+			}
+
+			if count >= v.UMaxCount {
+				return app.NewError(ERROR_COUPON_UCOUNT, "Exceeds the user receiving limit")
+			}
+
+			vv := CouponReceive{}
+
+			vv.CouponId = v.Id
+			vv.Uid = task.Uid
+
+			vv.UseMaxCount = v.UseMaxCount
+			vv.UseMinCount = v.UseMinCount
+			vv.UseMaxValue = v.UseMaxValue
+			vv.UseMinValue = v.UseMinValue
+
+			now := time.Now()
+
+			r := rand.New(now.UnixNano())
+
+			vv.Value = v.MinValue + r.Int63n(v.MaxValue-v.MinValue)
+			vv.Rebate = v.MinRebate + r.Int63n(v.MaxRebate-v.MinRebate)
+			vv.Ctime = now.Unix()
+
+			switch v.StartTimeType {
+			case CouponTimeTypeRelative:
+				vv.StartTime = vv.Ctime + v.StartTime
+			case CouponTimeTypeRelativeDay:
+				vv.StartTime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix() + v.StartTime
+			default:
+				vv.StartTime = v.StartTime
+			}
+
+			switch v.EndTimeType {
+			case CouponTimeTypeRelative:
+				vv.EndTime = vv.Ctime + v.EndTime
+			case CouponTimeTypeRelativeDay:
+				vv.EndTime = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).Unix() + v.EndTime
+			default:
+				vv.EndTime = v.EndTime
+			}
+
+			_, err = kk.DBInsert(tx, a.GetCouponReceiveTable(), a.GetPrefix(), &vv)
+
+			if err != nil {
+				return err
+			}
+
+			v.Count = v.Count + 1
+
+			_, err = kk.DBUpdateWithKeys(tx, a.GetCouponTable(), a.GetPrefix(), &v, map[string]bool{"count": true})
+
+			if err != nil {
+				return err
+			}
+
+		} else {
+			rows.Close()
+			return app.NewError(ERROR_COUPON_NOT_FOUND, "Not Found coupon")
+		}
+
+		return nil
+	}()
+
+	if err == nil {
+		err = tx.Commit()
+	}
+
+	if err != nil {
+		tx.Rollback()
+		task.Result.Errno = ERROR_COUPON
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	task.Result.Coupon = &v
 
 	return nil
 }

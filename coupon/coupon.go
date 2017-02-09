@@ -10,8 +10,9 @@ import (
 const CouponTypeCash = 0   //现金券
 const CouponTypeRebate = 1 //折扣券
 
-const CouponTimeTypeAbstract = 0 //绝对时间
-const CouponTimeTypeRelative = 1 //相对领取时间
+const CouponTimeTypeAbstract = 0    //绝对时间
+const CouponTimeTypeRelative = 1    //相对领取时间
+const CouponTimeTypeRelativeDay = 2 //相对领取日期
 
 const CouponStatusNone = 0 //未上线
 const CouponStatusIn = 200 //已上线
@@ -21,6 +22,7 @@ type Coupon struct {
 	Type int   `json:"type"`
 
 	Count     int `json:"count"`     //已派发数量
+	UseCount  int `json:"useCount"`  //已使用数量
 	MaxCount  int `json:"maxCount"`  //最大派发数量
 	UMaxCount int `json:"umaxCount"` //用户领取最大数量
 
@@ -96,6 +98,9 @@ type CouponApp struct {
 
 	CouponTable        kk.DBTable
 	CouponReceiveTable kk.DBTable
+
+	Client       *client.Service
+	NotifyClient *client.WithService
 }
 
 func (C *CouponApp) GetDB() (*sql.DB, error) {
