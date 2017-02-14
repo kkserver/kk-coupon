@@ -13,20 +13,19 @@ type CouponUseQueryCounter struct {
 
 type CouponUse struct {
 	CouponReceive
-	OfferValue int64 `json:"offerValue"` //优惠金额
+	Offer int64 `json:"offer"` //优惠金额
 }
 
 type CouponUseQueryTaskResult struct {
 	app.Result
-	Counter *CouponQueryCounter `json:"counter,omitempty"`
-	Coupons []CouponUse         `json:"coupons,omitempty"`
+	Counter *CouponUseQueryCounter `json:"counter,omitempty"`
+	Coupons []CouponUse            `json:"coupons,omitempty"`
 }
 
 type CouponUseQueryTask struct {
 	app.Task
 
-	Uid        int64  `json:"uid"`
-	ReceiveIds string `json:"receiveIds"`
+	Uid int64 `json:"uid"`
 
 	Value int64 `json:"value"` //总计金额
 	Count int64 `json:"count"` //总计数量

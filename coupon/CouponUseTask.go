@@ -6,16 +6,16 @@ import (
 
 type CouponUseTaskResult struct {
 	app.Result
-	Receive *CouponReceive `json:"receive,omitempty"`
+	Coupon *CouponReceive `json:"coupon,omitempty"`
 }
 
 type CouponUseTask struct {
 	app.Task
 
-	ReceiveId int64 `json:"receiveId"`
+	Id int64 `json:"id"`
 
 	Value int64 `json:"value"` //总计金额
-	Count int64 `json:"count"` //总计数量
+	Count int   `json:"count"` //总计数量
 
 	UseType    string `json:"useType"`    //使用类型
 	UseTradeNo string `json:"useTradeNo"` //使用流水号

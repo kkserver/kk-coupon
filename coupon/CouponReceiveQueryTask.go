@@ -13,8 +13,8 @@ type CouponReceiveQueryCounter struct {
 
 type CouponReceiveQueryTaskResult struct {
 	app.Result
-	Counter  *CouponReceiveQueryCounter `json:"counter,omitempty"`
-	Receives []CouponReceive            `json:"receives,omitempty"`
+	Counter *CouponReceiveQueryCounter `json:"counter,omitempty"`
+	Coupons []CouponReceive            `json:"coupons,omitempty"`
 }
 
 type CouponReceiveQueryTask struct {

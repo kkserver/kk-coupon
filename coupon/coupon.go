@@ -21,10 +21,11 @@ type Coupon struct {
 	Id   int64 `json:"id"`
 	Type int   `json:"type"`
 
-	Count     int `json:"count"`     //已派发数量
-	UseCount  int `json:"useCount"`  //已使用数量
-	MaxCount  int `json:"maxCount"`  //最大派发数量
-	UMaxCount int `json:"umaxCount"` //用户领取最大数量
+	Count     int   `json:"count"`     //已派发数量
+	UseCount  int   `json:"useCount"`  //已使用数量
+	UseValue  int64 `json:"useValue"`  //累计使用金额
+	MaxCount  int   `json:"maxCount"`  //最大派发数量
+	UMaxCount int   `json:"umaxCount"` //用户领取最大数量
 
 	UseMaxCount int   `json:"useMaxCount"` //最大使用数量
 	UseMinCount int   `json:"useMinCount"` //最小使用数量
@@ -60,6 +61,8 @@ type CouponReceive struct {
 	CouponId int64 `json:"couponId"`
 	Uid      int64 `json:"uid"`
 
+	Type int `json:"type"`
+
 	UseMaxCount int   `json:"useMaxCount"` //最大使用数量
 	UseMinCount int   `json:"useMinCount"` //最小使用数量
 	UseMaxValue int64 `json:"useMaxValue"` //最大使用金额
@@ -74,6 +77,7 @@ type CouponReceive struct {
 	UseTime    int64  `json:"useTime"`    //使用时间
 	UseType    string `json:"useType"`    //使用类型
 	UseTradeNo string `json:"useTradeNo"` //使用流水号
+	UseValue   int64  `json:"useValue"`   //优惠金额
 
 	Status int `json:"status"`
 
@@ -98,9 +102,6 @@ type CouponApp struct {
 
 	CouponTable        kk.DBTable
 	CouponReceiveTable kk.DBTable
-
-	Client       *client.Service
-	NotifyClient *client.WithService
 }
 
 func (C *CouponApp) GetDB() (*sql.DB, error) {

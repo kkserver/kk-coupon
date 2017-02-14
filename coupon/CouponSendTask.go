@@ -6,7 +6,7 @@ import (
 
 type CouponSendTaskResult struct {
 	app.Result
-	Receive *CouponReceive `json:"receive,omitempty"`
+	Coupon *CouponReceive `json:"coupon,omitempty"`
 }
 
 type CouponSendTask struct {
