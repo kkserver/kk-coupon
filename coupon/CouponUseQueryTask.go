@@ -25,6 +25,8 @@ type CouponUseQueryTaskResult struct {
 type CouponUseQueryTask struct {
 	app.Task
 
+	Id int64 `json:"id"`
+
 	Uid int64 `json:"uid"`
 
 	Value int64 `json:"value"` //总计金额

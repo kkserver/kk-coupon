@@ -994,9 +994,17 @@ func (S *CouponService) HandleCouponUseQueryTask(a ICouponApp, task *CouponUseQu
 
 	var sql = bytes.NewBuffer(nil)
 
-	sql.WriteString(" WHERE uid=?")
+	sql.WriteString(" WHERE 1")
 
-	args = append(args, task.Uid)
+	if task.Id != 0 {
+		sql.WriteString(" AND id=?")
+		args = append(args, task.Id)
+	}
+
+	if task.Uid != 0 {
+		sql.WriteString(" AND uid=?")
+		args = append(args, task.Uid)
+	}
 
 	sql.WriteString(" AND status=?")
 
