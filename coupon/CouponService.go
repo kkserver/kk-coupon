@@ -931,7 +931,7 @@ func (S *CouponService) HandleCouponReceiveQueryTask(a ICouponApp, task *CouponR
 		var counter = CouponReceiveQueryCounter{}
 		counter.PageIndex = pageIndex
 		counter.PageSize = pageSize
-		counter.RowCount, err = kk.DBQueryCount(db, a.GetCouponTable(), a.GetPrefix(), sql.String(), args...)
+		counter.RowCount, err = kk.DBQueryCount(db, a.GetCouponReceiveTable(), a.GetPrefix(), sql.String(), args...)
 		if err != nil {
 			task.Result.Errno = ERROR_COUPON
 			task.Result.Errmsg = err.Error()
