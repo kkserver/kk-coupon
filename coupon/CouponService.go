@@ -617,7 +617,7 @@ func (S *CouponService) HandleCouponUseTask(a ICouponApp, task *CouponUseTask) e
 		return nil
 	}
 
-	v := CouponReceive{}
+	v := CouponUse{}
 
 	tx, err := db.Begin()
 
