@@ -19,6 +19,7 @@ type CouponService struct {
 	Remove *CouponRemoveTask
 	Create *CouponCreateTask
 	Query  *CouponQueryTask
+	Count  *CouponCountTask
 
 	Send     *CouponSendTask
 	Use      *CouponUseTask
@@ -447,6 +448,59 @@ func (S *CouponService) HandleCouponQueryTask(a ICouponApp, task *CouponQueryTas
 	return nil
 }
 
+func (S *CouponService) HandleCouponCountTask(a ICouponApp, task *CouponCountTask) error {
+
+	var db, err = a.GetDB()
+
+	if err != nil {
+		task.Result.Errno = ERROR_COUPON
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	var args = []interface{}{}
+
+	var sql = bytes.NewBuffer(nil)
+
+	sql.WriteString(" WHERE 1")
+
+	if task.Id != 0 {
+		sql.WriteString(" AND id=?")
+		args = append(args, task.Id)
+	}
+
+	if task.Status != "" {
+
+		sql.WriteString(" AND status IN (")
+
+		for i, v := range strings.Split(task.Status, ",") {
+			if i != 0 {
+				sql.WriteString(",")
+			}
+			sql.WriteString("?")
+			args = append(args, v)
+		}
+
+		sql.WriteString(")")
+	}
+
+	if task.Keyword != "" {
+		q := "%" + task.Keyword + "%"
+		sql.WriteString(" AND (title LIKE ? OR summary LIKE ? OR remark LIKE ?)")
+		args = append(args, q, q, q)
+	}
+
+	task.Result.Count, err = kk.DBQueryCount(db, a.GetCouponTable(), a.GetPrefix(), sql.String(), args...)
+
+	if err != nil {
+		task.Result.Errno = ERROR_COUPON
+		task.Result.Errmsg = err.Error()
+		return nil
+	}
+
+	return nil
+}
+
 func (S *CouponService) HandleCouponSendTask(a ICouponApp, task *CouponSendTask) error {
 
 	if task.Id == 0 {
@@ -617,7 +671,7 @@ func (S *CouponService) HandleCouponUseTask(a ICouponApp, task *CouponUseTask) e
 		return nil
 	}
 
-	v := CouponUse{}
+	v := CouponReceive{}
 
 	tx, err := db.Begin()
 
